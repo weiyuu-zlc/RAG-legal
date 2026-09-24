@@ -1,0 +1,17 @@
+# 环境变量与密钥
+.env
+
+# Python 缓存
+__pycache__/
+*.pyc
+
+# 构建产物：向量库 / BM25 索引
+databases/
+*.faiss
+*.pkl
+
+# 原始 PDF 文档（体积较大，不纳入版本控制，保留处理后的 docx）
+data/source_pdf/
+
+# 系统文件
+.DS_Store

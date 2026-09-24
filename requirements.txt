@@ -1,0 +1,27 @@
+# ===== 基础依赖（沿用 RAG-cy，版本保持一致）=====
+python-dotenv==1.0.1
+pydantic==2.9.2
+tiktoken==0.8.0
+tenacity==8.5.0
+requests==2.32.3
+aiohttp==3.10.10
+tqdm==4.66.5
+pandas==2.2.3
+json_repair==0.35.0
+httpx==0.27.2
+pyprojroot==0.3.0
+click==8.1.7
+
+# ===== 大模型与向量检索 =====
+dashscope==1.20.14          # 通义千问对话 + text-embedding-v3 向量
+openai==1.51.2              # 备用 Provider（可选）
+faiss-cpu==1.9.0.post1      # 向量索引
+rank-bm25==0.2.2            # BM25 关键词检索
+langchain==0.3.3            # 文本分块工具（RecursiveCharacterTextSplitter）
+
+# ===== 法规文档解析 =====
+python-docx==1.1.2          # 解析 .docx（主要来源）
+pdfplumber==0.11.4          # 解析仅有 PDF 的法规（次要来源）
+
+# ===== Web 界面 =====
+streamlit==1.39.0
