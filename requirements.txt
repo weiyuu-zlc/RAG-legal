@@ -17,6 +17,7 @@ dashscope==1.20.14          # 通义千问对话 + text-embedding-v3 向量
 openai==1.51.2              # 备用 Provider（可选）
 faiss-cpu==1.9.0.post1      # 向量索引
 rank-bm25==0.2.2            # BM25 关键词检索
+jieba==0.42.1               # 中文分词（BM25 建库与查询共用）
 langchain==0.3.3            # 文本分块工具（RecursiveCharacterTextSplitter）
 
 # ===== 法规文档解析 =====

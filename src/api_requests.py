@@ -471,12 +471,7 @@ class APIProcessor:
 
         # 每种 schema 对应一个 prompt 类，各类结构一致（system_prompt / system_prompt_with_schema / AnswerSchema / user_prompt）
         schema_prompt_classes = {
-            "name": prompts.AnswerWithRAGContextNamePrompt,
-            "number": prompts.AnswerWithRAGContextNumberPrompt,
-            "boolean": prompts.AnswerWithRAGContextBooleanPrompt,
-            "names": prompts.AnswerWithRAGContextNamesPrompt,
-            "comparative": prompts.ComparativeAnswerPrompt,
-            "string": prompts.AnswerWithRAGContextStringPrompt,  # 支持开放性文本问题
+            "string": prompts.AnswerWithRAGContextStringPrompt,  # 法律问答仅保留开放性文本问答
         }
         if schema not in schema_prompt_classes:
             raise ValueError(f"Unsupported schema: {schema}")
@@ -487,23 +482,6 @@ class APIProcessor:
         response_format = prompt_class.AnswerSchema
         user_prompt = prompt_class.user_prompt
         return system_prompt, response_format, user_prompt
-
-    def get_rephrased_questions(self, original_question: str, companies: List[str]) -> Dict[str, str]:
-        """Use LLM to break down a comparative question into individual questions."""
-        answer_dict = self.processor.send_message(
-            system_content=prompts.RephrasedQuestionsPrompt.system_prompt,
-            human_content=prompts.RephrasedQuestionsPrompt.user_prompt.format(
-                question=original_question,
-                companies=", ".join([f'"{company}"' for company in companies])
-            ),
-            is_structured=True,
-            response_format=prompts.RephrasedQuestionsPrompt.RephrasedQuestions
-        )
-        
-        # Convert the answer_dict to the desired format
-        questions_dict = {item["company_name"]: item["question"] for item in answer_dict["questions"]}
-        
-        return questions_dict
 
 
 class AsyncOpenaiProcessor:
@@ -700,7 +678,6 @@ class BaseDashscopeProcessor:
             temperature=temperature,
             result_format='message'
         )
-        print('dashscope.api_key=', dashscope.api_key)
         print('model=', model)
         print('response=', response)
         # 兼容 openai/gemini 返回格式，始终返回 dict

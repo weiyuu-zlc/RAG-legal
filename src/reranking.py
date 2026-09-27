@@ -1,9 +1,36 @@
 import os
+import json
 from dotenv import load_dotenv
 from openai import OpenAI
 import requests
 import src.prompts as prompts
+from json_repair import repair_json
 from concurrent.futures import ThreadPoolExecutor
+
+
+# DashScope 只返回文本，需显式要求 JSON 输出后再解析出真实 relevance_score（修复分数恒为 0 的问题）
+_RERANK_JSON_HINT_SINGLE = (
+    "\n\n你必须只输出一个JSON对象，不要包含任何解释文字或代码块标记，格式如下：\n"
+    '{"reasoning": "简要说明该文本块与查询的相关性", "relevance_score": 0.0}\n'
+    "其中 relevance_score 为0到1之间、步长0.1的数字。"
+)
+_RERANK_JSON_HINT_MULTIPLE = (
+    "\n\n你必须只输出一个JSON对象，不要包含任何解释文字或代码块标记，格式如下：\n"
+    '{"block_rankings": [{"reasoning": "...", "relevance_score": 0.0}]}\n'
+    "block_rankings 数组长度必须等于文本块数量、顺序与输入一致，"
+    "relevance_score 为0到1之间、步长0.1的数字。"
+)
+
+
+def _parse_llm_json(content: str) -> dict:
+    """解析 DashScope 返回文本为 JSON：剥离可能的代码块围栏后用 json_repair 容错解析。"""
+    s = content.strip()
+    if s.startswith("```"):
+        nl = s.find("\n")
+        s = s[nl + 1:] if nl != -1 else s[3:]
+        if s.rstrip().endswith("```"):
+            s = s.rstrip()[:-3]
+    return json.loads(repair_json(s))
 
 
 # JinaReranker：基于Jina API的重排器，适用于多语言场景
@@ -74,9 +101,10 @@ class LLMReranker:
             response_dict = response.model_dump()
             return response_dict
         elif self.provider == "dashscope":
-            # dashscope 只返回字符串，暂不做结构化解析
+            # dashscope 只返回文本，显式要求 JSON 输出后解析出真实 relevance_score
             messages = [
-                {"role": "system", "content": self.system_prompt_rerank_single_block},
+                {"role": "system",
+                 "content": self.system_prompt_rerank_single_block + _RERANK_JSON_HINT_SINGLE},
                 {"role": "user", "content": user_prompt},
             ]
             rsp = self.llm.Generation.call(
@@ -90,8 +118,9 @@ class LLMReranker:
                 raise RuntimeError(f"DashScope返回None或非dict: {rsp}")
             if 'output' in rsp and 'choices' in rsp['output']:
                 content = rsp['output']['choices'][0]['message']['content']
-                # 这里只返回字符串，后续可按需解析
-                return {"relevance_score": 0.0, "reasoning": content}
+                data = _parse_llm_json(content)
+                return {"relevance_score": float(data["relevance_score"]),
+                        "reasoning": data.get("reasoning", "")}
             else:
                 raise RuntimeError(f"DashScope返回格式异常: {rsp}")
         else:
@@ -121,7 +150,8 @@ class LLMReranker:
             return response_dict
         elif self.provider == "dashscope":
             messages = [
-                {"role": "system", "content": self.system_prompt_rerank_multiple_blocks},
+                {"role": "system",
+                 "content": self.system_prompt_rerank_multiple_blocks + _RERANK_JSON_HINT_MULTIPLE},
                 {"role": "user", "content": user_prompt},
             ]
             rsp = self.llm.Generation.call(
@@ -136,8 +166,13 @@ class LLMReranker:
             #print('rsp=', rsp)
             if 'output' in rsp and 'choices' in rsp['output']:
                 content = rsp['output']['choices'][0]['message']['content']
-                # 这里只返回字符串，后续可按需解析
-                return {"block_rankings": [{"relevance_score": 0.0, "reasoning": content} for _ in retrieved_documents]}
+                data = _parse_llm_json(content)
+                rankings = [
+                    {"relevance_score": float(r["relevance_score"]),
+                     "reasoning": r.get("reasoning", "")}
+                    for r in data["block_rankings"]
+                ]
+                return {"block_rankings": rankings}
             else:
                 raise RuntimeError(f"DashScope返回格式异常: {rsp}")
         else:

@@ -5,6 +5,9 @@
 __pycache__/
 *.pyc
 
+# 虚拟环境
+.venv/
+
 # 构建产物：向量库 / BM25 索引
 databases/
 *.faiss
