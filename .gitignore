@@ -18,3 +18,6 @@ data/source_pdf/
 
 # 系统文件
 .DS_Store
+
+# Claude Code 本地设置（每台机器各自的本地配置）
+.claude/
