@@ -29,7 +29,6 @@ RAG-legal/
 ├── app.py                      # Streamlit Web 界面
 ├── cli.py                      # 命令行入口（ask / batch）
 ├── requirements.txt
-├── .env.example
 ├── data/                       # 法规源文件（29 docx + 1 PDF 汇编）
 ├── databases/                  # 构建产物（已在 .gitignore 中忽略，需本地生成）
 │   ├── parsed_laws/            # 解析后的结构化 JSON
@@ -60,12 +59,14 @@ pip install -r requirements.txt
 
 ## 配置 API Key
 
-复制 .env.example 为 .env，填入 DashScope API Key（用于通义千问对话与 text-embedding 向量）：
+在项目根目录新建 .env 文件，填入 DashScope API Key（用于通义千问对话与 text-embedding 向量）：
 
 ```bash
-cp .env.example .env
-# 编辑 .env，设置 DASHSCOPE_API_KEY=你的key
+# .env
+DASHSCOPE_API_KEY=你的key
 ```
+
+也可以不建文件，直接在当前 shell 中导出：`export DASHSCOPE_API_KEY=你的key`。
 
 获取地址：https://dashscope.console.aliyun.com/apiKey
 
