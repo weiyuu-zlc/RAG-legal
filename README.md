@@ -9,6 +9,7 @@ LegalMind 是一个面向中文法律法规的检索增强生成（RAG）问答�
 - 按法名过滤：可将检索范围限定在某部法规（如"劳动合同法"）内。
 - 两种交互方式：Streamlit Web 界面与 click 命令行，复用同一套问答管线。
 - 全库统一索引：不按文档分片，检索靠条文自带的元数据（法名、条号、施行日期等）过滤。
+- 内置评测：LLM 自动生成评测集，检索侧算 Hit@k / MRR，答案侧用 LLM-judge 评正确性与引用命中率。
 
 ## 语料规模
 
@@ -34,7 +35,8 @@ RAG-legal/
 │   ├── parsed_laws/            # 解析后的结构化 JSON
 │   ├── chunked_laws/           # 分块后的 chunk JSON
 │   ├── laws_metadata.json      # 全库法规元数据
-│   └── index/                  # corpus.json / bm25.pkl / faiss.index
+│   ├── index/                  # corpus.json / bm25.pkl / faiss.index
+│   └── eval/                   # 评测集与评测报告（运行评测时生成）
 └── src/
     ├── legal_parser.py         # 解析（docx + PDF 汇编）
     ├── text_splitter.py        # 按条分块
@@ -44,7 +46,8 @@ RAG-legal/
     ├── prompts.py              # 提示词
     ├── api_requests.py         # 大模型 API 封装
     ├── reranking.py            # LLM 重排
-    └── api_request_parallel_processor.py
+    ├── api_request_parallel_processor.py
+    └── evaluation.py           # 评测（检索 Hit@k/MRR + 答案 LLM-judge）
 ```
 
 ## 环境准备
@@ -112,6 +115,26 @@ python cli.py ask "劳动合同的试用期最长可以约定多久？"
 python cli.py batch questions.json -o questions_with_answers.json
 # 可选：--top-n  --no-rerank  --parallel 5  --model qwen-turbo
 ```
+
+## 评测
+
+评测模块由大模型从 corpus 条文自动生成评测集（每题标注命中的《法名》第X条），再从检索与答案两个维度打分。产物写入 databases/eval/，需已配置 DASHSCOPE_API_KEY。
+
+```bash
+# 1. 生成评测集（LLM 自动生成）-> databases/eval/eval_questions.json
+python -m src.evaluation gen -n 20
+
+# 2. 检索质量评测（BM25 / 向量 / 混合，算 Hit@1/Hit@3/Hit@k、MRR）
+python -m src.evaluation retrieval -k 5
+
+# 3. 答案质量评测（LLM-judge 评正确性 + 程序判定引用命中率）
+python -m src.evaluation answer
+
+# 也可一次跑完上述三步
+python -m src.evaluation all -n 20
+```
+
+评测集为大模型自动生成，建议人工抽查后再用于评测。
 
 ## 说明
 
